@@ -11,8 +11,18 @@ import asyncio
 
 import storage
 from council import run_full_council, generate_conversation_title, stage1_collect_responses, stage2_collect_rankings, stage3_synthesize_final, calculate_aggregate_rankings
+from openrouter import close_client
 
-app = FastAPI(title="LLM Council API")
+from contextlib import asynccontextmanager
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    await close_client()
+
+
+app = FastAPI(title="LLM Council API", lifespan=lifespan)
 
 # Enable CORS for local development
 app.add_middleware(
@@ -92,13 +102,17 @@ async def send_message(conversation_id: str, request: SendMessageRequest):
     is_first_message = len(conversation["messages"]) == 0
     storage.add_user_message(conversation_id, request.content)
 
+    # Run title generation in parallel with council processing when it's the first message
     if is_first_message:
-        title = await generate_conversation_title(request.content)
+        council_task = asyncio.create_task(run_full_council(request.content))
+        title_task = asyncio.create_task(generate_conversation_title(request.content))
+        stage1_results, stage2_results, stage3_result, metadata = await council_task
+        title = await title_task
         storage.update_conversation_title(conversation_id, title)
-
-    stage1_results, stage2_results, stage3_result, metadata = await run_full_council(
-        request.content
-    )
+    else:
+        stage1_results, stage2_results, stage3_result, metadata = await run_full_council(
+            request.content
+        )
 
     storage.add_assistant_message(
         conversation_id,
@@ -147,9 +161,9 @@ async def send_message_stream(conversation_id: str, request: SendMessageRequest)
             # 关键修复点：Stage 2 必须加 ensure_ascii=False，否则中文排名解析必崩
             yield f"data: {json.dumps({'type': 'stage2_complete', 'data': stage2_results, 'metadata': {'label_to_model': label_to_model, 'aggregate_rankings': aggregate_rankings}}, ensure_ascii=False)}\n\n"
 
-            # Stage 3: Synthesize final answer
+            # Stage 3: Synthesize final answer (with aggregate rankings for better context)
             yield f"data: {json.dumps({'type': 'stage3_start'}, ensure_ascii=False)}\n\n"
-            stage3_result = await stage3_synthesize_final(request.content, stage1_results, stage2_results)
+            stage3_result = await stage3_synthesize_final(request.content, stage1_results, stage2_results, aggregate_rankings)
             # 关键修复点：Stage 3 是最终答案，最容易出现 Unicode 报错
             yield f"data: {json.dumps({'type': 'stage3_complete', 'data': stage3_result}, ensure_ascii=False)}\n\n"
 
