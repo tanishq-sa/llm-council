@@ -115,7 +115,8 @@ Now provide your evaluation and ranking:"""
 async def stage3_synthesize_final(
     user_query: str,
     stage1_results: List[Dict[str, Any]],
-    stage2_results: List[Dict[str, Any]]
+    stage2_results: List[Dict[str, Any]],
+    aggregate_rankings: List[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
     Stage 3: Chairman synthesizes final response.
@@ -124,6 +125,7 @@ async def stage3_synthesize_final(
         user_query: The original user query
         stage1_results: Individual model responses from Stage 1
         stage2_results: Rankings from Stage 2
+        aggregate_rankings: Pre-computed aggregate rankings (optional)
 
     Returns:
         Dict with 'model' and 'response' keys
@@ -139,10 +141,23 @@ async def stage3_synthesize_final(
         for result in stage2_results
     ])
 
+    # Include peer consensus summary if available
+    consensus_text = ""
+    if aggregate_rankings:
+        ranked_lines = "\n".join([
+            f"{i+1}. {agg['model'].split('/')[-1]} (avg rank: {agg['average_rank']:.2f}, votes: {agg['rankings_count']})"
+            for i, agg in enumerate(aggregate_rankings)
+        ])
+        consensus_text = f"""
+PEER CONSENSUS (aggregate rankings, lower score = better):
+{ranked_lines}
+
+"""
+
     chairman_prompt = f"""You are the Chairman of an LLM Council. Multiple AI models have provided responses to a user's question, and then ranked each other's responses.
 
 Original Question: {user_query}
-
+{consensus_text}
 STAGE 1 - Individual Responses:
 {stage1_text}
 
@@ -151,8 +166,8 @@ STAGE 2 - Peer Rankings:
 
 Your task as Chairman is to synthesize all of this information into a single, comprehensive, accurate answer to the user's original question. Consider:
 - The individual responses and their insights
-- The peer rankings and what they reveal about response quality
-- Any patterns of agreement or disagreement
+- The peer consensus rankings as a signal of response quality
+- Any patterns of agreement or disagreement across models
 
 Provide a clear, well-reasoned final answer that represents the council's collective wisdom:"""
 
@@ -228,10 +243,8 @@ def calculate_aggregate_rankings(
     model_positions = defaultdict(list)
 
     for ranking in stage2_results:
-        ranking_text = ranking['ranking']
-
-        # Parse the ranking from the structured format
-        parsed_ranking = parse_ranking_from_text(ranking_text)
+        # Reuse already-parsed ranking to avoid redundant text processing
+        parsed_ranking = ranking.get('parsed_ranking') or parse_ranking_from_text(ranking['ranking'])
 
         for position, label in enumerate(parsed_ranking, start=1):
             if label in label_to_model:
@@ -319,11 +332,12 @@ async def run_full_council(user_query: str) -> Tuple[List, List, Dict, Dict]:
     # Calculate aggregate rankings
     aggregate_rankings = calculate_aggregate_rankings(stage2_results, label_to_model)
 
-    # Stage 3: Synthesize final answer
+    # Stage 3: Synthesize final answer (pass aggregate rankings for better context)
     stage3_result = await stage3_synthesize_final(
         user_query,
         stage1_results,
-        stage2_results
+        stage2_results,
+        aggregate_rankings
     )
 
     # Prepare metadata
