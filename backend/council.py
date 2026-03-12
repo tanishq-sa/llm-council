@@ -15,7 +15,8 @@ async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
     Returns:
         List of dicts with 'model' and 'response' keys
     """
-    messages = [{"role": "user", "content": user_query}]
+    english_query = f"{user_query}\n\nPlease reply in English."
+    messages = [{"role": "user", "content": english_query}]
 
     # Query all models in parallel
     responses = await query_models_parallel(COUNCIL_MODELS, messages)
@@ -23,10 +24,16 @@ async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
     # Format results
     stage1_results = []
     for model, response in responses.items():
-        if response is not None:  # Only include successful responses
+        if response is not None:
             stage1_results.append({
                 "model": model,
                 "response": response.get('content', '')
+            })
+        else:
+            # Inject an error response so the UI still shows the model tried
+            stage1_results.append({
+                "model": model,
+                "response": f"Error: The model `{model}` failed to return a response from the API."
             })
 
     return stage1_results
@@ -280,6 +287,12 @@ async def generate_conversation_title(user_query: str) -> str:
     Returns:
         A short title (3-5 words)
     """
+    import asyncio
+    
+    # Delay title generation slightly to prevent hitting free-tier concurrent rate limits
+    # during the heavy Stage 1 parallel query
+    await asyncio.sleep(2.0)
+    
     title_prompt = f"""Generate a very short title (3-5 words maximum) that summarizes the following question.
 The title should be concise and descriptive. Do not use quotes or punctuation in the title.
 

@@ -49,9 +49,16 @@ async def query_model(
         "Content-Type": "application/json",
     }
 
+    # Ensure models always respond in English by prepending a system message
+    system_message = {"role": "system", "content": "You are a helpful AI assistant. You must always communicate in English. Do not use Chinese or any other language."}
+    
+    # If the first message is already a system message, we'll just append our instructions or leave it alone,
+    # but for simplicity let's just insert it at the beginning.
+    payload_messages = [system_message] + messages
+
     payload = {
         "model": model,
-        "messages": messages,
+        "messages": payload_messages,
     }
 
     try:
@@ -72,6 +79,9 @@ async def query_model(
             'reasoning_details': message.get('reasoning_details')
         }
 
+    except httpx.HTTPStatusError as e:
+        print(f"Error querying model {model}: HTTP {e.response.status_code} - {e.response.text}")
+        return None
     except Exception as e:
         print(f"Error querying model {model}: {e}")
         return None

@@ -15,7 +15,7 @@ COUNCIL_MODELS = [
     "nvidia/nemotron-3-super-120b-a12b:free",
 ]
 
-CHAIRMAN_MODEL = "arcee-ai/trinity-large-preview:free"
+CHAIRMAN_MODEL = "stepfun/step-3.5-flash:free"
 
 # API endpoint
 OPENROUTER_API_URL = os.getenv("OPENROUTER_API_URL", "https://openrouter.ai/api/v1/chat/completions")
