@@ -1,8 +1,8 @@
 """3-stage LLM Council orchestration."""
 
 from typing import List, Dict, Any, Tuple
-from openrouter import query_models_parallel, query_model
-from config import COUNCIL_MODELS, CHAIRMAN_MODEL
+from .openrouter import query_models_parallel, query_model
+from .config import COUNCIL_MODELS, CHAIRMAN_MODEL
 
 
 async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
@@ -61,38 +61,38 @@ async def stage2_collect_rankings(
         for label, result in zip(labels, stage1_results)
     ])
 
-    ranking_prompt = f"""你正在评估以下问题的不同回答：
+    ranking_prompt = f"""You are evaluating different responses to the following question:
 
-问题：{user_query}
+Question: {user_query}
 
-以下是来自不同模型的回答（已匿名处理）：
+Below are the responses from different models (anonymized):
 
 {responses_text}
 
-你的任务：
-1. 首先逐一评估每个回答。对每个回答，说明其优点和不足。
-2. 然后在回复的最末尾，给出最终排名。
+Your task:
+1. First, evaluate each response one by one. For each response, explain its strengths and weaknesses.
+2. Then, at the very end of your reply, provide the final ranking.
 
-请用中文撰写你的评估内容。
+Please write your evaluation in English.
 
-重要：最终排名必须严格按照以下格式：
-- 以 "FINAL RANKING:" 这一行开头（全大写，带冒号）
-- 然后按从好到差的顺序用编号列表列出回答
-- 每行格式为：数字、句点、空格，然后只写回答标签（例如 "1. Response A"）
-- 排名部分不要添加任何其他文字或说明
+IMPORTANT: The final ranking MUST strictly follow this format:
+- Start with the line "FINAL RANKING:" (all caps, with a colon)
+- Then list the responses in order from best to worst using a numbered list.
+- Each line format should be: number, period, space, and then ONLY the response label (e.g., "1. Response A")
+- Do NOT add any surrounding text or explanations in the ranking section.
 
-你的完整回复格式示例：
+Example of your full reply format:
 
-回答A在X方面提供了详细信息，但遗漏了Y...
-回答B内容准确但在Z方面缺乏深度...
-回答C提供了最全面的答案...
+Response A provided detailed information on X, but missed Y...
+Response B is accurate but lacks depth on Z...
+Response C gives the most comprehensive answer...
 
 FINAL RANKING:
 1. Response C
 2. Response A
 3. Response B
 
-请提供你的评估和排名："""
+Please provide your evaluation and ranking:"""
 
     messages = [{"role": "user", "content": ranking_prompt}]
 
@@ -156,22 +156,22 @@ PEER CONSENSUS (aggregate rankings, lower score = better):
 
 """
 
-    chairman_prompt = f"""你是LLM议会的主席。多个AI模型已经对用户的问题提供了回答，并且相互对彼此的回答进行了排名。
+    chairman_prompt = f"""You are the Chairman of the LLM Council. Multiple AI models have provided responses to a user's question, and they have also ranked each other's responses.
 
-原始问题：{user_query}
+Original Question: {user_query}
 {consensus_text}
-阶段一 - 各模型独立回答：
+Stage 1 - Independent Model Responses:
 {stage1_text}
 
-阶段二 - 同行排名：
+Stage 2 - Peer Rankings:
 {stage2_text}
 
-作为主席，你的任务是将所有这些信息综合成一个针对用户原始问题的单一、全面、准确的答案。请考虑：
-- 各个回答及其见解
-- 同行共识排名作为回答质量的信号
-- 各模型之间的共识或分歧模式
+As the Chairman, your task is to synthesize all this information into a single, comprehensive, and accurate final answer to the user's original question. Please consider:
+- The individual responses and their insights
+- The peer consensus ranking as a strong signal for response quality
+- The patterns of agreement or disagreement among the models
 
-请用中文提供一个清晰、有理有据的最终答案，代表议会的集体智慧："""
+Please provide a clear, well-reasoned final answer in English that represents the collective wisdom of the council:"""
 
     messages = [{"role": "user", "content": chairman_prompt}]
 
@@ -290,7 +290,7 @@ Title:"""
     messages = [{"role": "user", "content": title_prompt}]
 
     # Use gemini-2.5-flash for title generation (fast and cheap)
-    response = await query_model("deepseek-ai/DeepSeek-V3", messages, timeout=30.0)
+    response = await query_model("arcee-ai/trinity-large-preview:free", messages, timeout=30.0)
 
     if response is None:
         # Fallback to a generic title

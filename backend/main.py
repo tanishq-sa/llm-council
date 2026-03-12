@@ -9,9 +9,9 @@ import uuid
 import json
 import asyncio
 
-import storage
-from council import run_full_council, generate_conversation_title, stage1_collect_responses, stage2_collect_rankings, stage3_synthesize_final, calculate_aggregate_rankings
-from openrouter import close_client
+from . import storage
+from .council import run_full_council, generate_conversation_title, stage1_collect_responses, stage2_collect_rankings, stage3_synthesize_final, calculate_aggregate_rankings
+from .openrouter import close_client
 
 from contextlib import asynccontextmanager
 
@@ -36,7 +36,7 @@ app.add_middleware(
 
 class CreateConversationRequest(BaseModel):
     """Request to create a new conversation."""
-    pass
+    is_temporary: bool = False
 
 
 class SendMessageRequest(BaseModel):
@@ -76,7 +76,7 @@ async def list_conversations():
 async def create_conversation(request: CreateConversationRequest):
     """Create a new conversation."""
     conversation_id = str(uuid.uuid4())
-    conversation = storage.create_conversation(conversation_id)
+    conversation = storage.create_conversation(conversation_id, request.is_temporary)
     return conversation
 
 
@@ -87,6 +87,15 @@ async def get_conversation(conversation_id: str):
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
     return conversation
+
+
+@app.delete("/api/conversations/{conversation_id}")
+async def delete_conversation(conversation_id: str):
+    """Delete a conversation."""
+    success = storage.delete_conversation(conversation_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return {"status": "success", "message": "Conversation deleted"}
 
 
 @app.post("/api/conversations/{conversation_id}/message")

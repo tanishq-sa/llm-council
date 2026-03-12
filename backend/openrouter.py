@@ -3,7 +3,7 @@
 import asyncio
 import httpx
 from typing import List, Dict, Any, Optional
-from config import OPENROUTER_API_KEY, OPENROUTER_API_URL
+from .config import OPENROUTER_API_KEY, OPENROUTER_API_URL
 
 # Shared client with connection pooling for all requests
 _client: Optional[httpx.AsyncClient] = None

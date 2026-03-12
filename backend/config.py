@@ -8,19 +8,17 @@ load_dotenv()
 # OpenRouter API key
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
-# Council members - list of model identifiers (SiliconFlow 模型)
 COUNCIL_MODELS = [
-    "deepseek-ai/DeepSeek-R1",
-    "deepseek-ai/DeepSeek-V3",
-    "Pro/zai-org/GLM-4.7",
-    "Qwen/Qwen2.5-72B-Instruct"
+    "openrouter/hunter-alpha",
+    "stepfun/step-3.5-flash:free",
+    "arcee-ai/trinity-large-preview:free",
+    "nvidia/nemotron-3-super-120b-a12b:free",
 ]
 
-# Chairman model - synthesizes final response
-CHAIRMAN_MODEL = "deepseek-ai/DeepSeek-V3"
+CHAIRMAN_MODEL = "arcee-ai/trinity-large-preview:free"
 
-# API endpoint (修改为硅基流动地址)
-OPENROUTER_API_URL = os.getenv("OPENROUTER_API_URL", "https://api.siliconflow.cn/v1/chat/completions")
+# API endpoint
+OPENROUTER_API_URL = os.getenv("OPENROUTER_API_URL", "https://openrouter.ai/api/v1/chat/completions")
 
 # Data directory for conversation storage
 DATA_DIR = "data/conversations"

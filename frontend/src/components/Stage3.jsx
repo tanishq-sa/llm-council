@@ -8,10 +8,10 @@ export default function Stage3({ finalResponse }) {
 
   return (
     <div className="stage stage3">
-      <h3 className="stage-title">阶段三：议会最终答案</h3>
+      <h3 className="stage-title">Stage 3: Council Final Answer</h3>
       <div className="final-response">
         <div className="chairman-label">
-          主席：{finalResponse.model.split('/')[1] || finalResponse.model}
+          Chairman: {finalResponse.model.split('/')[1] || finalResponse.model}
         </div>
         <div className="final-text markdown-content">
           <ReactMarkdown>{finalResponse.response}</ReactMarkdown>
